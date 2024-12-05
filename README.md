@@ -1,4 +1,4 @@
-# CPSC-245-project
+# CPSC-254-project
 
 ## Group Members
 
