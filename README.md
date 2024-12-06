@@ -1,5 +1,7 @@
 # CPSC-254-project
 
+# A Task Management APP
+
 ### Group Members
 
 Raymond Huang
