@@ -49,6 +49,10 @@ class TaskManagerApp(tk.Tk):
         self.delete_button = tk.Button(self.button_frame, text="Delete Task", command=self.delete_task)
         self.delete_button.pack(side=tk.LEFT, padx=5)
 
+        # **New "Mark as Done" Button**
+        self.mark_done_button = tk.Button(self.button_frame, text="Mark as Done", command=self.mark_as_done)
+        self.mark_done_button.pack(side=tk.LEFT, padx=5)
+
         self.load_tasks()
 
     def load_tasks(self):
@@ -84,6 +88,26 @@ class TaskManagerApp(tk.Tk):
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
         cursor.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
+        conn.commit()
+        conn.close()
+
+        self.load_tasks()
+    
+    # **New Method to Mark Task as Done**
+    def mark_as_done(self):
+        selected_item = self.tree.selection()
+        if not selected_item:
+            messagebox.showwarning("No Selection", "Please select a task to mark as done.")
+            return
+
+        task_id, title, description, status = self.tree.item(selected_item)["values"]
+        if status == "Done":
+            messagebox.showinfo("Already Done", "The selected task is already marked as done.")
+            return
+
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        cursor.execute("UPDATE tasks SET status = 'Done' WHERE id = ?", (task_id,))
         conn.commit()
         conn.close()
 
