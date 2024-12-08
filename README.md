@@ -1,6 +1,7 @@
 # CPSC-254-project
 
 # A Task Management APP
+This a task management where users can add a task, edit them, and prioritize which task they need to get done first.
 
 ### Group Members
 
