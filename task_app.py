@@ -15,13 +15,15 @@ def initialize_database():
             title TEXT NOT NULL,
             description TEXT,
             status TEXT DEFAULT 'To Do',
-            priority TEXT DEFAULT 'Medium'  -- **Added priority column**
+            priority TEXT DEFAULT 'Medium',
+            category TEXT DEFAULT 'General'  -- **Added category column**
         )
     ''')
+    # **Add category column if it doesn't exist (for existing databases)**
     cursor.execute("PRAGMA table_info(tasks)")
     columns = [info[1] for info in cursor.fetchall()]
-    if 'priority' not in columns:
-        cursor.execute("ALTER TABLE tasks ADD COLUMN priority TEXT DEFAULT 'Medium'")
+    if 'category' not in columns:
+        cursor.execute("ALTER TABLE tasks ADD COLUMN category TEXT DEFAULT 'General'")
     conn.commit()
     conn.close()
 
@@ -33,17 +35,28 @@ class TaskManagerApp(tk.Tk):
         self.geometry("800x700")  
 
         # Task List
-        self.tree = ttk.Treeview(self, columns=("ID", "Title", "Description", "Status", "Priority"), show="headings", selectmode="extended")
+        # **Updated Treeview to include Category column**
+        self.tree = ttk.Treeview(
+            self, 
+            columns=("ID", "Title", "Description", "Status", "Priority", "Category"), 
+            show="headings", 
+            selectmode="extended"
+        )
         self.tree.heading("ID", text="ID")
         self.tree.heading("Title", text="Title")
         self.tree.heading("Description", text="Description")
         self.tree.heading("Status", text="Status")
         self.tree.heading("Priority", text="Priority")  
+        self.tree.heading("Category", text="Category")  # **Added Category column heading**
+
         self.tree.column("ID", width=50)
         self.tree.column("Priority", width=100)  
+        self.tree.column("Category", width=150)  # **Set width for Category column**
+
         self.tree.pack(fill=tk.BOTH, expand=True)
 
-        self.tree.tag_configure('High', background='#E06666')      #  Red
+        # **Define Tag Styles for Priority Levels**
+        self.tree.tag_configure('High', background='#E06666')      # Red
         self.tree.tag_configure('Medium', background='#FFD966')    # Yellow
         self.tree.tag_configure('Low', background='#93C47D')       # Green
 
@@ -85,6 +98,8 @@ class TaskManagerApp(tk.Tk):
             priority = row[4]
             self.tree.insert("", tk.END, values=row, tags=(priority,))  
 
+        conn.close()
+
     def open_add_task_window(self):
         TaskEditor(self, "Add Task", None)
 
@@ -106,7 +121,7 @@ class TaskManagerApp(tk.Tk):
             messagebox.showwarning("No Selection", "Please select task(s) to delete.")
             return
 
-        # Cofirm deletion of multiple tasks
+        # Confirm deletion of multiple tasks
         if len(selected_items) == 1:
             confirm = messagebox.askyesno("Confirm Deletion", "Are you sure you want to delete the selected task?")
         else:
@@ -139,7 +154,7 @@ class TaskManagerApp(tk.Tk):
 
         for item in selected_items:
             task = self.tree.item(item)["values"]
-            task_id, title, description, status, priority = task
+            task_id, title, description, status, priority, category = task
             if status == "Done":
                 tasks_already_done.append(title)
             else:
@@ -162,7 +177,7 @@ class TaskEditor(tk.Toplevel):
         super().__init__(parent)
         self.parent = parent
         self.title(title)
-        self.geometry("400x400")  
+        self.geometry("500x400")  
         self.task_id = task_id
 
         # Title
@@ -187,6 +202,13 @@ class TaskEditor(tk.Toplevel):
         self.priority_combo = ttk.Combobox(self, textvariable=self.priority_var, values=["High", "Medium", "Low"])
         self.priority_combo.pack(fill=tk.X, padx=10)
 
+        # **Category**
+        tk.Label(self, text="Category:").pack(pady=5)
+        self.category_var = tk.StringVar(value="General")
+        self.category_combo = ttk.Combobox(self, textvariable=self.category_var, values=["General", "Work", "Personal", "Urgent", "Others"])
+        self.category_combo.pack(fill=tk.X, padx=10)
+        self.category_combo.bind("<FocusIn>", self.show_category_options)
+
         # Buttons
         self.button_frame = tk.Frame(self)
         self.button_frame.pack(fill=tk.X, pady=10)
@@ -200,6 +222,10 @@ class TaskEditor(tk.Toplevel):
         if task_id:
             self.load_task()
 
+    def show_category_options(self, event):
+        # **Optional: Provide additional categories or handle custom input**
+        pass  # **Can be expanded to allow dynamic category addition**
+
     def load_task(self):
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
@@ -211,13 +237,15 @@ class TaskEditor(tk.Toplevel):
             self.title_entry.insert(0, task[1])
             self.description_entry.insert(0, task[2])
             self.status_var.set(task[3])
-            self.priority_var.set(task[4])  #Load prio
+            self.priority_var.set(task[4])
+            self.category_var.set(task[5])
 
     def save_task(self):
         title = self.title_entry.get().strip()
         description = self.description_entry.get().strip()
         status = self.status_var.get()
         priority = self.priority_var.get()
+        category = self.category_var.get().strip()
 
         if not title:
             messagebox.showwarning("Validation Error", "Title cannot be empty.")
@@ -227,18 +255,21 @@ class TaskEditor(tk.Toplevel):
             messagebox.showwarning("Validation Error", "Please select a valid priority level.")
             return
 
+        if not category:
+            category = "General"  # **Default category if none provided**
+
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
 
         if self.task_id:
             cursor.execute(
-                "UPDATE tasks SET title = ?, description = ?, status = ?, priority = ? WHERE id = ?",
-                (title, description, status, priority, self.task_id),
+                "UPDATE tasks SET title = ?, description = ?, status = ?, priority = ?, category = ? WHERE id = ?",
+                (title, description, status, priority, category, self.task_id),
             )
         else:
             cursor.execute(
-                "INSERT INTO tasks (title, description, status, priority) VALUES (?, ?, ?, ?)",
-                (title, description, status, priority),
+                "INSERT INTO tasks (title, description, status, priority, category) VALUES (?, ?, ?, ?, ?)",
+                (title, description, status, priority, category),
             )
 
         conn.commit()
