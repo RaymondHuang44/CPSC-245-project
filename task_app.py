@@ -16,7 +16,7 @@ def initialize_database():
             description TEXT,
             status TEXT DEFAULT 'To Do',
             priority TEXT DEFAULT 'Medium',
-            category TEXT DEFAULT 'General'  -- **Added category column**
+            category TEXT DEFAULT 'General'    -- **Added category column**
         )
     ''')
     # **Add category column if it doesn't exist (for existing databases)**
@@ -32,35 +32,71 @@ class TaskManagerApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Task Manager")
-        self.geometry("800x700")  
+        self.geometry("1000x700")  # **Increased width to accommodate new columns and tabs**
 
-        # Task List
-        # **Updated Treeview to include Category column**
-        self.tree = ttk.Treeview(
-            self, 
-            columns=("ID", "Title", "Description", "Status", "Priority", "Category"), 
-            show="headings", 
+        # **Create Notebook for Tabs**
+        self.notebook = ttk.Notebook(self)
+        self.notebook.pack(fill=tk.BOTH, expand=True)
+
+        # **Create Frames for Each Tab**
+        self.all_tasks_frame = ttk.Frame(self.notebook)
+        self.done_tasks_frame = ttk.Frame(self.notebook)
+
+        # **Add Tabs to Notebook**
+        self.notebook.add(self.all_tasks_frame, text="All Tasks")
+        self.notebook.add(self.done_tasks_frame, text="Done Tasks")
+
+        # **All Tasks Treeview**
+        self.all_tasks_tree = ttk.Treeview(
+            self.all_tasks_frame,
+            columns=("ID", "Title", "Description", "Status", "Priority", "Category"),
+            show="headings",
             selectmode="extended"
         )
-        self.tree.heading("ID", text="ID")
-        self.tree.heading("Title", text="Title")
-        self.tree.heading("Description", text="Description")
-        self.tree.heading("Status", text="Status")
-        self.tree.heading("Priority", text="Priority")  
-        self.tree.heading("Category", text="Category")  # **Added Category column heading**
+        self.all_tasks_tree.heading("ID", text="ID")
+        self.all_tasks_tree.heading("Title", text="Title")
+        self.all_tasks_tree.heading("Description", text="Description")
+        self.all_tasks_tree.heading("Status", text="Status")
+        self.all_tasks_tree.heading("Priority", text="Priority")
+        self.all_tasks_tree.heading("Category", text="Category")  # **Added Category column heading**
 
-        self.tree.column("ID", width=50)
-        self.tree.column("Priority", width=100)  
-        self.tree.column("Category", width=150)  # **Set width for Category column**
+        self.all_tasks_tree.column("ID", width=50)
+        self.all_tasks_tree.column("Priority", width=100)
+        self.all_tasks_tree.column("Category", width=150)  # **Set width for Category column**
 
-        self.tree.pack(fill=tk.BOTH, expand=True)
+        self.all_tasks_tree.pack(fill=tk.BOTH, expand=True)
 
         # **Define Tag Styles for Priority Levels**
-        self.tree.tag_configure('High', background='#E06666')      # Red
-        self.tree.tag_configure('Medium', background='#FFD966')    # Yellow
-        self.tree.tag_configure('Low', background='#93C47D')       # Green
+        self.all_tasks_tree.tag_configure('High', background='#E06666')      # Red
+        self.all_tasks_tree.tag_configure('Medium', background='#FFD966')    # Yellow
+        self.all_tasks_tree.tag_configure('Low', background='#93C47D')       # Green
 
-        # Buttons
+        # **Done Tasks Treeview**
+        self.done_tasks_tree = ttk.Treeview(
+            self.done_tasks_frame,
+            columns=("ID", "Title", "Description", "Status", "Priority", "Category"),
+            show="headings",
+            selectmode="extended"
+        )
+        self.done_tasks_tree.heading("ID", text="ID")
+        self.done_tasks_tree.heading("Title", text="Title")
+        self.done_tasks_tree.heading("Description", text="Description")
+        self.done_tasks_tree.heading("Status", text="Status")
+        self.done_tasks_tree.heading("Priority", text="Priority")
+        self.done_tasks_tree.heading("Category", text="Category")  # **Added Category column heading**
+
+        self.done_tasks_tree.column("ID", width=50)
+        self.done_tasks_tree.column("Priority", width=100)
+        self.done_tasks_tree.column("Category", width=150)  # **Set width for Category column**
+
+        self.done_tasks_tree.pack(fill=tk.BOTH, expand=True)
+
+        # **Define Tag Styles for Priority Levels in Done Tasks**
+        self.done_tasks_tree.tag_configure('High', background='#E06666')      # Red
+        self.done_tasks_tree.tag_configure('Medium', background='#FFD966')    # Yellow
+        self.done_tasks_tree.tag_configure('Low', background='#93C47D')       # Green
+
+        # **Buttons Frame**
         self.button_frame = tk.Frame(self)
         self.button_frame.pack(fill=tk.X, padx=10, pady=5)
 
@@ -79,8 +115,11 @@ class TaskManagerApp(tk.Tk):
         self.load_tasks()
 
     def load_tasks(self):
-        for item in self.tree.get_children():
-            self.tree.delete(item)
+        # **Clear Existing Items in Both Treeviews**
+        for item in self.all_tasks_tree.get_children():
+            self.all_tasks_tree.delete(item)
+        for item in self.done_tasks_tree.get_children():
+            self.done_tasks_tree.delete(item)
 
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
@@ -95,8 +134,13 @@ class TaskManagerApp(tk.Tk):
                 END, id
         """)
         for row in cursor.fetchall():
-            priority = row[4]
-            self.tree.insert("", tk.END, values=row, tags=(priority,))  
+            task_id, title, description, status, priority, category = row
+            tags = (priority,)
+
+            if status == "Done":
+                self.done_tasks_tree.insert("", tk.END, values=row, tags=tags)
+            else:
+                self.all_tasks_tree.insert("", tk.END, values=row, tags=tags)
 
         conn.close()
 
@@ -104,7 +148,16 @@ class TaskManagerApp(tk.Tk):
         TaskEditor(self, "Add Task", None)
 
     def open_edit_task_window(self):
-        selected_items = self.tree.selection()
+        # **Determine Which Tab is Active**
+        current_tab = self.notebook.index(self.notebook.select())
+        if current_tab == 0:
+            selected_tree = self.all_tasks_tree
+        elif current_tab == 1:
+            selected_tree = self.done_tasks_tree
+        else:
+            selected_tree = self.all_tasks_tree  # **Default to All Tasks**
+
+        selected_items = selected_tree.selection()
         if not selected_items:
             messagebox.showwarning("No Selection", "Please select a task to edit.")
             return
@@ -112,16 +165,28 @@ class TaskManagerApp(tk.Tk):
             messagebox.showwarning("Multiple Selection", "Please select only one task to edit.")
             return
 
-        task_id = self.tree.item(selected_items[0])["values"][0]
+        task_id = selected_tree.item(selected_items[0])["values"][0]
         TaskEditor(self, "Edit Task", task_id)
 
     def delete_tasks(self):
-        selected_items = self.tree.selection()
+        # **Determine Which Tab is Active**
+        current_tab = self.notebook.index(self.notebook.select())
+        if current_tab == 0:
+            selected_tree = self.all_tasks_tree
+            status_filter = None  # **All tasks**
+        elif current_tab == 1:
+            selected_tree = self.done_tasks_tree
+            status_filter = "Done"  # **Only done tasks**
+        else:
+            selected_tree = self.all_tasks_tree
+            status_filter = None
+
+        selected_items = selected_tree.selection()
         if not selected_items:
             messagebox.showwarning("No Selection", "Please select task(s) to delete.")
             return
 
-        # Confirm deletion of multiple tasks
+        # **Confirm Deletion**
         if len(selected_items) == 1:
             confirm = messagebox.askyesno("Confirm Deletion", "Are you sure you want to delete the selected task?")
         else:
@@ -130,7 +195,7 @@ class TaskManagerApp(tk.Tk):
         if not confirm:
             return
 
-        task_ids = [self.tree.item(item)["values"][0] for item in selected_items]
+        task_ids = [selected_tree.item(item)["values"][0] for item in selected_items]
 
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
@@ -141,7 +206,16 @@ class TaskManagerApp(tk.Tk):
         self.load_tasks()
 
     def mark_as_done(self):
-        selected_items = self.tree.selection()
+        # **Determine Which Tab is Active**
+        current_tab = self.notebook.index(self.notebook.select())
+        if current_tab == 0:
+            selected_tree = self.all_tasks_tree
+        elif current_tab == 1:
+            selected_tree = self.done_tasks_tree
+        else:
+            selected_tree = self.all_tasks_tree  # **Default to All Tasks**
+
+        selected_items = selected_tree.selection()
         if not selected_items:
             messagebox.showwarning("No Selection", "Please select task(s) to mark as done.")
             return
@@ -153,7 +227,7 @@ class TaskManagerApp(tk.Tk):
         tasks_to_mark = []
 
         for item in selected_items:
-            task = self.tree.item(item)["values"]
+            task = selected_tree.item(item)["values"]
             task_id, title, description, status, priority, category = task
             if status == "Done":
                 tasks_already_done.append(title)
@@ -202,7 +276,7 @@ class TaskEditor(tk.Toplevel):
         self.priority_combo = ttk.Combobox(self, textvariable=self.priority_var, values=["High", "Medium", "Low"])
         self.priority_combo.pack(fill=tk.X, padx=10)
 
-        # **Category**
+        # Category
         tk.Label(self, text="Category:").pack(pady=5)
         self.category_var = tk.StringVar(value="General")
         self.category_combo = ttk.Combobox(self, textvariable=self.category_var, values=["General", "Work", "Personal", "Urgent", "Others"])
