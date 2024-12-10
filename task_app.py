@@ -19,7 +19,7 @@ def initialize_database():
             category TEXT DEFAULT 'General'    -- **Added category column**
         )
     ''')
-    # **Add category column if it doesn't exist (for existing databases)**
+
     cursor.execute("PRAGMA table_info(tasks)")
     columns = [info[1] for info in cursor.fetchall()]
     if 'category' not in columns:
@@ -32,7 +32,7 @@ class TaskManagerApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Task Manager")
-        self.geometry("1000x700")  # **Increased width to accommodate new columns and tabs**
+        self.geometry("1000x700")  
 
         # **Create Notebook for Tabs**
         self.notebook = ttk.Notebook(self)
@@ -58,11 +58,11 @@ class TaskManagerApp(tk.Tk):
         self.all_tasks_tree.heading("Description", text="Description")
         self.all_tasks_tree.heading("Status", text="Status")
         self.all_tasks_tree.heading("Priority", text="Priority")
-        self.all_tasks_tree.heading("Category", text="Category")  # **Added Category column heading**
+        self.all_tasks_tree.heading("Category", text="Category")  
 
         self.all_tasks_tree.column("ID", width=50)
         self.all_tasks_tree.column("Priority", width=100)
-        self.all_tasks_tree.column("Category", width=150)  # **Set width for Category column**
+        self.all_tasks_tree.column("Category", width=150)  
 
         self.all_tasks_tree.pack(fill=tk.BOTH, expand=True)
 
@@ -83,20 +83,19 @@ class TaskManagerApp(tk.Tk):
         self.done_tasks_tree.heading("Description", text="Description")
         self.done_tasks_tree.heading("Status", text="Status")
         self.done_tasks_tree.heading("Priority", text="Priority")
-        self.done_tasks_tree.heading("Category", text="Category")  # **Added Category column heading**
+        self.done_tasks_tree.heading("Category", text="Category")  
 
         self.done_tasks_tree.column("ID", width=50)
         self.done_tasks_tree.column("Priority", width=100)
-        self.done_tasks_tree.column("Category", width=150)  # **Set width for Category column**
+        self.done_tasks_tree.column("Category", width=150)  
 
         self.done_tasks_tree.pack(fill=tk.BOTH, expand=True)
 
-        # **Define Tag Styles for Priority Levels in Done Tasks**
+        # **Priority Levels in Done Tasks**
         self.done_tasks_tree.tag_configure('High', background='#E06666')      # Red
         self.done_tasks_tree.tag_configure('Medium', background='#FFD966')    # Yellow
         self.done_tasks_tree.tag_configure('Low', background='#93C47D')       # Green
 
-        # **Buttons Frame**
         self.button_frame = tk.Frame(self)
         self.button_frame.pack(fill=tk.X, padx=10, pady=5)
 
@@ -115,7 +114,6 @@ class TaskManagerApp(tk.Tk):
         self.load_tasks()
 
     def load_tasks(self):
-        # **Clear Existing Items in Both Treeviews**
         for item in self.all_tasks_tree.get_children():
             self.all_tasks_tree.delete(item)
         for item in self.done_tasks_tree.get_children():
@@ -186,7 +184,6 @@ class TaskManagerApp(tk.Tk):
             messagebox.showwarning("No Selection", "Please select task(s) to delete.")
             return
 
-        # **Confirm Deletion**
         if len(selected_items) == 1:
             confirm = messagebox.askyesno("Confirm Deletion", "Are you sure you want to delete the selected task?")
         else:
@@ -297,8 +294,7 @@ class TaskEditor(tk.Toplevel):
             self.load_task()
 
     def show_category_options(self, event):
-        # **Optional: Provide additional categories or handle custom input**
-        pass  # **Can be expanded to allow dynamic category addition**
+        pass  
 
     def load_task(self):
         conn = sqlite3.connect(DB_NAME)
@@ -330,7 +326,7 @@ class TaskEditor(tk.Toplevel):
             return
 
         if not category:
-            category = "General"  # **Default category if none provided**
+            category = "General"  
 
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
